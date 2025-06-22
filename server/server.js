@@ -122,7 +122,8 @@ mongoose.connect(process.env.MONGO_URI, {
 // .catch((err) => console.error("❌ MongoDB connection error:", err));
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin:"https://codewithfriendsv1client.vercel.app", 
+    // "http://localhost:3000",
     credentials: true,
   },
   transports: ['websocket', 'polling']
@@ -131,7 +132,10 @@ const io = new Server(server, {
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: [
+    // "http://localhost:3000",                    // ✅ local development
+    "https://codewithfriendsv1client.vercel.app" // ✅ deployed frontend
+  ],
   credentials: true
 }));
 app.use(express.json());

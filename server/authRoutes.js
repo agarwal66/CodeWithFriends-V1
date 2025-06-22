@@ -7,14 +7,14 @@ router.get('/google', passport.authenticate('google', {
 
 router.get('/google/callback',
   passport.authenticate('google', {
-    failureRedirect: 'http://localhost:3000',
-    successRedirect: 'http://localhost:3000/dashboard'
+successRedirect: `${process.env.FRONTEND_URL}/dashboard`,
+failureRedirect: `${process.env.FRONTEND_URL}/login`,
   })
 );
 
-router.get('/logout', (req, res) => {
+app.get("/logout", (req, res) => {
   req.logout(() => {
-    res.redirect('http://localhost:3000');
+    res.redirect(process.env.FRONTEND_URL); // ✅ dynamic redirect
   });
 });
 
