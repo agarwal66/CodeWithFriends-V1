@@ -136,15 +136,25 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(session({
-  secret: 'codewithfriends_secret',
+  secret: 'secret',
   resave: false,
   saveUninitialized: true,
   cookie: {
     secure: false,
-    httpOnly: false,
+    httpOnly: true,
     sameSite: 'lax',
   }
 }));
+// app.use(session({
+//   secret: 'codewithfriends_secret',
+//   resave: false,
+//   saveUninitialized: true,
+//   cookie: {
+//     secure: false,
+//     httpOnly: false,
+//     sameSite: 'lax',
+//   }
+// }));
 app.use(passport.initialize());
 app.use(passport.session());
 app.use('/auth', authRoutes);
