@@ -87,7 +87,8 @@ const passport = require('passport');
 const cors = require('cors');
 const http = require('http');
 const mongoose = require('mongoose');
-require("./authRoutes")(app, passport); // ✅ Pass app and passport to authRoutes
+const passport = require('passport');
+ // ✅ Pass app and passport to authRoutes
 require('dotenv').config();
 require('./passport');
 const authRoutes = require('./authRoutes');
@@ -97,7 +98,7 @@ const axios = require('axios');
 const app = express();
 const server = http.createServer(app);
 const { Server } = require('socket.io');
-
+require("./authRoutes")(app, passport); 
 // MongoDB Connection
 let db; // global
 
