@@ -98,7 +98,7 @@ const axios = require('axios');
 const app = express();
 const server = http.createServer(app);
 const { Server } = require('socket.io');
-require("./authRoutes")(app, passport); 
+// require("./authRoutes")(app, passport); 
 // MongoDB Connection
 let db; // global
 
