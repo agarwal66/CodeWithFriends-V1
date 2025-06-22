@@ -87,6 +87,7 @@ const passport = require('passport');
 const cors = require('cors');
 const http = require('http');
 const mongoose = require('mongoose');
+require("./authRoutes")(app, passport); // ✅ Pass app and passport to authRoutes
 require('dotenv').config();
 require('./passport');
 const authRoutes = require('./authRoutes');

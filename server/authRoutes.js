@@ -11,11 +11,11 @@ successRedirect: `${process.env.FRONTEND_URL}/dashboard`,
 failureRedirect: `${process.env.FRONTEND_URL}/login`,
   })
 );
-
+module.exports=function(app,passport){
 app.get("/logout", (req, res) => {
   req.logout(() => {
     res.redirect(process.env.FRONTEND_URL); // ✅ dynamic redirect
   });
 });
-
+};
 module.exports = router;
