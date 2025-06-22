@@ -130,8 +130,13 @@ const io = new Server(server, {
 
 
 // Middleware
+// const cors = require("cors");
+
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: [
+    "http://localhost:3000",                    // ✅ local development
+    "https://codewithfriendsv1client.vercel.app" // ✅ deployed frontend
+  ],
   credentials: true
 }));
 app.use(express.json());
