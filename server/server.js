@@ -101,7 +101,7 @@ const { Server } = require('socket.io');
 // require("./authRoutes")(app, passport); 
 // MongoDB Connection
 let db; // global
-
+app.set("trust proxy", 1); // ✅ Trust first proxy for secure cookies
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -157,8 +157,9 @@ app.use(session({
   saveUninitialized: true,
   cookie: {
     secure: true,
-    httpOnly: true,
+    // httpOnly: true,
     sameSite: 'none',
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
   }
 }));
 app.use(passport.initialize());
