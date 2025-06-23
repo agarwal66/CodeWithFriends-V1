@@ -152,7 +152,7 @@ app.use(express.json());
 //   }
 // }));
 app.use(session({
-  secret: 'process.env.SESSION_SECRET'||"fallbacksecret",
+  secret: process.env.SESSION_SECRET||"fallbacksecret",
   resave: false,
   saveUninitialized: true,
   cookie: {
