@@ -138,6 +138,7 @@ app.use(cors({
     // "http://localhost:3000",                    // ✅ local development
     "https://codewithfriendsv1client.vercel.app" // ✅ deployed frontend
   ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
 app.use(express.json());
