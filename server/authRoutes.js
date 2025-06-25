@@ -100,16 +100,21 @@ router.post("/login", async (req, res, next) => {
 
   try {
     const user = await User.findOne({ email });
-    if (!user || user.password !== password) {
+    if (!user || !user.password) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // ✅ Create session like Google does
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
     req.login(user, (err) => {
       if (err) return next(err);
       return res.json({ message: "Login successful", user });
     });
   } catch (err) {
+    console.error("Login error:", err);
     return res.status(500).json({ error: "Internal Server Error" });
   }
 });
