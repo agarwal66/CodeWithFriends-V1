@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+node_modules/
+server/.env
+=======
 # server/.gitignore
 .env
 node_modules/
+>>>>>>> e1f44ca (updated1)
