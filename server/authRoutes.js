@@ -99,10 +99,24 @@ router.post("/login", async (req, res) => {
 // ===========================
 // ✅ Logout Route
 // ===========================
-router.get("/logout", (req, res) => {
-  req.logout(() => {
-    res.json({ message: "Logged out successfully" });
+// router.get("/logout", (req, res) => {
+//   req.logout(() => {
+//     res.json({ message: "Logged out successfully" });
+//   });
+// });
+router.get('/logout', (req, res) => {
+  req.logout(function (err) {
+    if (err) {
+      return res.status(500).json({ message: "Logout failed" });
+    }
+
+    // ✅ Destroy session
+    req.session.destroy(() => {
+      res.clearCookie('connect.sid'); // or whatever session cookie you're using
+
+      // ✅ Redirect directly to login page on frontend
+      res.redirect(process.env.FRONTEND_URL || 'https://codewithfriendsv1client.vercel.app');
+    });
   });
 });
-
 module.exports = router;
