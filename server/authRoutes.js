@@ -71,28 +71,46 @@ router.post("/register", async (req, res) => {
 // ===========================
 // 🔐 Email Login
 // ===========================
-router.post("/login", async (req, res) => {
+// router.post("/login", async (req, res) => {
+//   const { email, password } = req.body;
+//   try {
+//     const user = await User.findOne({ email });
+//     if (!user || !user.password) {
+//       return res.status(401).json({ error: "Invalid credentials" });
+//     }
+
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//       return res.status(400).json({ error: "Invalid credentials" });
+//     }
+
+//     req.login(user, (err) => {
+//       if (err) {
+//         return res.status(500).json({ error: "Login failed" });
+//       }
+//       res.json({ message: "Login successful" });
+//     });
+//   } catch (err) {
+//     console.error("❌ Login error:", err.message);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// });
+router.post("/login", async (req, res, next) => {
   const { email, password } = req.body;
+
   try {
     const user = await User.findOne({ email });
-    if (!user || !user.password) {
-      return res.status(400).json({ error: "Invalid credentials" });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ error: "Invalid credentials" });
-    }
-
+    // ✅ Create session like Google does
     req.login(user, (err) => {
-      if (err) {
-        return res.status(500).json({ error: "Login failed" });
-      }
-      res.json({ message: "Login successful" });
+      if (err) return next(err);
+      return res.json({ message: "Login successful", user });
     });
   } catch (err) {
-    console.error("❌ Login error:", err.message);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
