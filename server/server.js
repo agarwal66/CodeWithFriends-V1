@@ -156,8 +156,8 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
   cookie: {
-    secure: process.env.NODE_ENV === "production", // ✅ Use secure cookies in production
-  //  secure:process.env.NODE_ENV==="production",
+    secure: true,
+   secure:process.env.NODE_ENV==="production",
     httpOnly: true,
      
     sameSite: 'none',
