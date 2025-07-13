@@ -8,9 +8,14 @@ router.get('/google', passport.authenticate('google', {
 
 router.get('/google/callback',
   passport.authenticate('google', {
-    successRedirect: `${process.env.FRONTEND_URL}/dashboard`,
+    // successRedirect: `${process.env.FRONTEND_URL}/dashboard`,
     failureRedirect: `${process.env.FRONTEND_URL}/login`,
+    session:true
   })
+, (req, res) => {
+  // Successful authentication, redirect to dashboard
+  res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+}
 );
 
 // ✅ Logout route
