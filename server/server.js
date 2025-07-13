@@ -81,6 +81,25 @@
 //     res.status(500).json({ error: "Server error" });
 //   }
 // });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
@@ -112,16 +131,6 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// mongoose.connect(process.env.MONGO_URI, {
-//   useNewUrlParser: true,
-//   useUnifiedTopology: true,
-// })
-// let db; // 👈 define globally
-
-// client.connect().then(() => {
-//   db = client.db();
-// .then(() => console.log("✅ MongoDB Connected"))
-// .catch((err) => console.error("❌ MongoDB connection error:", err));
 const io = new Server(server, {
   cors: {
     origin:"https://codewithfriendsv1client.vercel.app", 
@@ -142,16 +151,6 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-// app.use(session({
-//   secret: 'secret',
-//   resave: false,
-//   saveUninitialized: true,
-//   cookie: {
-//     secure: false,
-//     httpOnly: true,
-//     sameSite: 'lax',
-//   }
-// }));
 app.use(session({
   secret: process.env.SESSION_SECRET||"fallbacksecret",
   resave: false,
@@ -178,34 +177,7 @@ app.get('/profile', (req, res) => {
   }
 });
 
-// Rooms route to fetch user’s past collabs
-// app.get('/user-rooms', async (req, res) => {
-//   if (!req.isAuthenticated()) {
-//     return res.status(401).json({ error: 'Not logged in' });
-//   }
 
-//   const rooms = await Room.find({ participants: req.user.email });
-//   res.json(rooms);
-// });
-// app.get('/user-rooms', async (req, res) => {
-//   const email = req.user?.emails?.[0]?.value;
-//   const rooms = await db.collection('rooms')
-//     .find({ userEmail: email })
-//     .sort({ timestamp: -1 })
-//     .toArray();
-
-//   res.json(rooms); // ✅ must return full array
-// });
-// app.get("/room-history", async (req, res) => {
-//   try {
-//     const email = req.user?.email; // or however you're storing it
-//     const history = await db.collection("room_history").find({ email }).toArray();
-//     res.json(history); // ✅ Only send plain data
-//   } catch (err) {
-//     console.error("Error fetching room history:", err);
-//     res.status(500).json({ error: "Failed to fetch history" });
-//   }
-// });
 
 app.get("/room-history", async (req, res) => {
   try {
@@ -328,67 +300,10 @@ app.post("/run-code", async (req, res) => {
 });
 
 
-
-
-// app.get("/room/:id", async (req, res) => {
-//   const roomId = req.params.id;
-//   try {
-//     const room = await Room.findOne({ roomId });
-//     if (room) {
-//       res.json(room);
-//     } else {
-//       res.status(404).json({ error: "Room not found" });
-//     }
-//   } catch (err) {
-//     res.status(500).json({ error: "Server error" });
-//   }
-// });
-
-// Socket.IO
-// Socket.IO
 io.on('connection', (socket) => {
   console.log('✅ New socket connected:', socket.id);
 
-  // Existing listeners like join-room, send-code, etc.
-// socket.on('join-room', async ({ roomId, username, email }) => {
-//   socket.join(roomId);
-//   socket.data.username = username;
-
-//   let room = await Room.findOne({ roomId });
-//   if (!room) {
-//     room = await Room.create({
-//       roomId,
-//       createdBy: email,
-//       participants: [email],
-//       codeContent: "",
-//     });
-//   } else if (!room.participants.includes(email)) {
-//     room.participants.push(email);
-//     await room.save();
-//   }
-
-//   try {
-//     await db.collection("room_history").insertOne({
-//   roomId,
-//   createdBy: email,
-//   creatorName: username || "Anonymous",
-//   createdAt: new Date(),
-//   userEmail: email,
-//   timestamp: new Date()
-// });
-
-//     console.log(`📝 Saved to room_history for ${email}`);
-//   } catch (err) {
-//     console.error("❌ Failed to insert into room_history:", err);
-//   }
-
-//   const sockets = await io.in(roomId).fetchSockets();
-//   const users = sockets.map(s => s.data.username);
-//   io.to(roomId).emit('room-users', users);
-
-//   console.log(`🧠 ${username} joined ${roomId}`);
-// });
-
+  
 socket.on('join-room', async ({ roomId, username, email }) => {
   socket.join(roomId);
   socket.data.username = username;
@@ -419,13 +334,28 @@ socket.on('join-room', async ({ roomId, username, email }) => {
       createdBy = existing.createdBy;
     }
 
-    await db.collection("room_history").insertOne({
-      roomId,
-      createdBy,
-      creatorName: creatorNameToStore,
-      userEmail: email,
-      timestamp: new Date()
-    });
+ const alreadyJoined = await db.collection("room_history").findOne({
+  roomId,
+  userEmail: email
+});
+
+if (!alreadyJoined) {
+  // Fetch room creation date from Room model
+  const roomData = await Room.findOne({ roomId });
+
+  await db.collection("room_history").insertOne({
+    roomId,
+    createdBy,
+    creatorName: creatorNameToStore,
+    userEmail: email,
+    timestamp: new Date(), // when the user joined
+    roomCreatedAt: roomData?.createdAt || new Date() // ✅ Add this
+  });
+
+  console.log(`📝 Saved to room_history for ${email}`);
+} else {
+  console.log(`🔁 Skipped duplicate entry for ${email} in ${roomId}`);
+}
 
     console.log(`📝 Saved to room_history for ${email}`);
   } catch (err) {

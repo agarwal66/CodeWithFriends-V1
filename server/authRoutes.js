@@ -22,6 +22,51 @@ router.get('/logout', (req, res) => {
 
 // ✅ Export the router only ONCE
 module.exports = router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // server/authRoutes.js
 // const express = require("express");
 // const passport = require("passport");

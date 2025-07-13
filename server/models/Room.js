@@ -1,21 +1,18 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const roomSchema = new mongoose.Schema({
   roomId: String,
-  createdBy: String,         // user email or id
-  participants: [String],    // array of emails or names
-  codeContent: String,       // latest code
+  createdBy: String,
+  participants: [String],
+  codeContent: String,
   chatHistory: [
     {
       sender: String,
-      message: String,
-      timestamp: { type: Date, default: Date.now }
+      message: String
     }
-  ],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
+  ]
+}, {
+  timestamps: true // ✅ This auto adds createdAt and updatedAt
 });
 
-module.exports = mongoose.model('Room', roomSchema);
+module.exports = mongoose.model("Room", roomSchema);
