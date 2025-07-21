@@ -300,6 +300,8 @@ app.post("/run-code", async (req, res) => {
 
 
 io.on('connection', (socket) => {
+  const usersInRoom = {};
+
   console.log('✅ New socket connected:', socket.id);
 
 
