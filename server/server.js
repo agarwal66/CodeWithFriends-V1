@@ -300,8 +300,6 @@ app.post("/run-code", async (req, res) => {
 
 
 io.on('connection', (socket) => {
-  const usersInRoom = {};
-
   console.log('✅ New socket connected:', socket.id);
 
 
@@ -309,23 +307,6 @@ socket.on('join-room', async ({ roomId, username, email }) => {
   socket.join(roomId);
   socket.data.username = username;
 
- if (!usersInRoom[roomId]) usersInRoom[roomId] = [];
-    usersInRoom[roomId].push(socket.id);
-const otherUsers = usersInRoom[roomId].filter(id => id !== socket.id);
-    socket.emit("all-users", { users: otherUsers });
-
-    socket.on("video-offer", ({ target, offer }) => {
-    io.to(target).emit("video-offer", { from: socket.id, offer });
-  });
-  socket.on("video-answer", ({ target, answer }) => {
-    io.to(target).emit("video-answer", { from: socket.id, answer });
-  });
-  socket.on("ice-candidate", ({ target, candidate }) => {
-    io.to(target).emit("ice-candidate", { from: socket.id, candidate });
-  });
-// });
-
-    
   let room = await Room.findOne({ roomId });
   if (!room) {
     room = await Room.create({
