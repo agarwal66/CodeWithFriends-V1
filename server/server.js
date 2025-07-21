@@ -370,23 +370,23 @@ io.on("connection", (socket) => {
 
     console.log(`🧠 ${username} joined ${roomId}`);
   });
- // Video Chat Signaling
-  socket.on("video-offer", ({ roomId, offer }) => {
-    // Emit video offer to all other peers in the room
-    socket.to(roomId).emit("video-offer", { offer });
-  });
+//  // Video Chat Signaling
+//   socket.on("video-offer", ({ roomId, offer }) => {
+//     // Emit video offer to all other peers in the room
+//     socket.to(roomId).emit("video-offer", { offer });
+//   });
 
-  socket.on("video-answer", ({ roomId, answer }) => {
-    // Emit video answer to all other peers in the room
-    socket.to(roomId).emit("video-answer", { answer });
-  });
+//   socket.on("video-answer", ({ roomId, answer }) => {
+//     // Emit video answer to all other peers in the room
+//     socket.to(roomId).emit("video-answer", { answer });
+//   });
 
-  // 🔄 Mutual ICE exchange handler
-socket.on("ice-candidate", ({ roomId, candidate }) => {
-  if (candidate) {
-    socket.to(roomId).emit("ice-candidate", { candidate });
-  }
-});
+//   // 🔄 Mutual ICE exchange handler
+// socket.on("ice-candidate", ({ roomId, candidate }) => {
+//   if (candidate) {
+//     socket.to(roomId).emit("ice-candidate", { candidate });
+//   }
+// });
 
   // ✅ Moved everything inside here 👇
   socket.on("send-code", async ({ roomId, code }) => {
@@ -415,9 +415,9 @@ socket.on("ice-candidate", ({ roomId, candidate }) => {
     socket.to(roomId).emit("voice-answer", { answer });
   });
 
-  // socket.on("ice-candidate", ({ roomId, candidate }) => {
-  //   socket.to(roomId).emit("ice-candidate", { candidate });
-  // });
+  socket.on("ice-candidate", ({ roomId, candidate }) => {
+    socket.to(roomId).emit("ice-candidate", { candidate });
+  });
 
   socket.on("disconnect", async () => {
     const rooms = Array.from(socket.rooms).filter((r) => r !== socket.id);
