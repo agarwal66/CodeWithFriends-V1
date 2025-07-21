@@ -86,6 +86,7 @@ const passport = require("passport");
 const cors = require("cors");
 const http = require("http");
 const mongoose = require("mongoose");
+const rateLimit = require("express-rate-limit");
 // const passport = require('passport');
 // ✅ Pass app and passport to authRoutes
 require("dotenv").config();
@@ -166,6 +167,13 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use("/auth", authRoutes);
+// Apply rate limiting to all requests
+const messageTimes = {}; // To track the message timestamps for each user
+
+// Rate Limiting Configuration
+const RATE_LIMIT = 40; // Max messages
+const WINDOW_SIZE_IN_MS = 2 * 60 * 1000; // 2 minutes
+const ERROR_MESSAGE = "You have exceeded the message limit. Please wait a moment.";
 
 // Profile Route
 app.get("/profile", (req, res) => {
@@ -183,18 +191,21 @@ app.get("/room-history", async (req, res) => {
     }
 
     const email = req.user.emails?.[0]?.value;
+
     const rooms = await db
       .collection("room_history")
       .find({ userEmail: email })
       .sort({ timestamp: -1 })
       .toArray();
 
+    console.log("Fetched rooms:", rooms); // Should be simple array of objects
     res.json(rooms);
   } catch (err) {
     console.error("❌ Failed to fetch room history:", err.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 app.get("/user-rooms", async (req, res) => {
   if (!req.isAuthenticated()) {
@@ -301,6 +312,10 @@ app.post("/run-code", async (req, res) => {
 
 io.on("connection", (socket) => {
   console.log("✅ New socket connected:", socket.id);
+  socket.on("ready-for-call", ({ roomId }) => {
+  socket.to(roomId).emit("ready-for-call");
+});
+
 
   socket.on("join-room", async ({ roomId, username, email }) => {
     socket.join(roomId);
@@ -366,6 +381,15 @@ io.on("connection", (socket) => {
 
     console.log(`🧠 ${username} joined ${roomId}`);
   });
+  const messageLimiter = rateLimit({
+  windowMs: 2 * 60 * 1000, // 2 minutes
+  max: 40, // Limit to 40 messages per 2 minutes
+  message: "You have exceeded the message limit. Please wait a while before sending more messages.",
+  keyGenerator: (req) => req.ip, // Rate limit per IP address
+  handler: (req, res) => {
+    res.status(429).json({ message: "Too many messages sent, please try again later." });
+  },
+});
  // Video Chat Signaling
   socket.on("video-offer", ({ roomId, offer }) => {
     // Emit video offer to all other peers in the room
@@ -377,10 +401,13 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("video-answer", { answer });
   });
 
-  socket.on("ice-candidate", ({ roomId, candidate }) => {
-    // Emit ICE candidates to all other peers in the room
+  // 🔄 Mutual ICE exchange handler
+socket.on("ice-candidate", ({ roomId, candidate }) => {
+  if (candidate) {
     socket.to(roomId).emit("ice-candidate", { candidate });
-  });
+  }
+});
+
   // ✅ Moved everything inside here 👇
   socket.on("send-code", async ({ roomId, code }) => {
     await Room.findOneAndUpdate({ roomId }, { codeContent: code });
@@ -391,13 +418,35 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("user-typing", username);
   });
 
-  socket.on("send-message", async ({ roomId, sender, message }) => {
-    await Room.findOneAndUpdate(
-      { roomId },
-      { $push: { chatHistory: { sender, message } } }
-    );
-    socket.to(roomId).emit("receive-message", { sender, message });
-  });
+socket.on("send-message", async ({ roomId, sender, message }) => {
+  const userIP = socket.handshake.address; // Or use user ID if you have that info
+  const currentTime = Date.now();
+
+  // Initialize if the user hasn't sent a message yet
+  if (!messageTimes[userIP]) {
+    messageTimes[userIP] = [];
+  }
+
+  // Clean up messages older than the rate limiting window (2 minutes)
+  messageTimes[userIP] = messageTimes[userIP].filter(time => currentTime - time < WINDOW_SIZE_IN_MS);
+
+  // Check if the user has exceeded the message limit
+  if (messageTimes[userIP].length >= RATE_LIMIT) {
+    socket.emit("error", ERROR_MESSAGE);
+    return;
+  }
+
+  // Log the current message time
+  messageTimes[userIP].push(currentTime);
+
+  // Proceed with sending the message
+  await Room.findOneAndUpdate(
+    { roomId },
+    { $push: { chatHistory: { sender, message } } }
+  );
+  socket.to(roomId).emit("receive-message", { sender, message });
+});
+
 
   // ✅ Voice features
   socket.on("voice-offer", ({ roomId, offer }) => {
@@ -408,9 +457,9 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("voice-answer", { answer });
   });
 
-  socket.on("ice-candidate", ({ roomId, candidate }) => {
-    socket.to(roomId).emit("ice-candidate", { candidate });
-  });
+  // socket.on("ice-candidate", ({ roomId, candidate }) => {
+  //   socket.to(roomId).emit("ice-candidate", { candidate });
+  // });
 
   socket.on("disconnect", async () => {
     const rooms = Array.from(socket.rooms).filter((r) => r !== socket.id);
