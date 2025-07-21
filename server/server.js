@@ -136,45 +136,47 @@ app.use(
 );
 app.use(express.json());
 // --when localhosty uncomment this below session
-// app.use(
-//   session({
-//     secret: process.env.SESSION_SECRET || "fallbacksecret",
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: {
-//       secure: false,
-//       // secure: process.env.NODE_ENV === "production",
-//       httpOnly: true,
-//       // sameSite: "none",
-//       sameSite: "lax", // ✅ Use lax for local dev
-//       maxAge: 24 * 60 * 60 * 1000, // 1 day
-//     },
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "fallbacksecret",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: false,
+      // secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      // sameSite: "none",
+      sameSite: "lax", // ✅ Use lax for local dev
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    },
 // --for production
-app.use(session({
-  secret: process.env.SESSION_SECRET||"fallbacksecret",
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    // secure: true,
-   secure:process.env.NODE_ENV==="production",
-    httpOnly: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
-  }
+// app.use(session({
+//   secret: process.env.SESSION_SECRET||"fallbacksecret",
+//   resave: false,
+//   saveUninitialized: true,
+//   cookie: {
+//     // secure: true,
+//    secure:process.env.NODE_ENV==="production",
+//     httpOnly: true,
+//     sameSite: 'none',
+//     maxAge: 24 * 60 * 60 * 1000 // 1 day
+//   }
   })
 );
 app.use(passport.initialize());
 app.use(passport.session());
-app.use("/auth", authRoutes);
+app.use('/auth', authRoutes);
 
 // Profile Route
-app.get("/profile", (req, res) => {
+app.get('/profile', (req, res) => {
   if (req.isAuthenticated()) {
-    res.json(req.user); // ✅ yeh hona chahiye
+    res.json(req.user);  // ✅ yeh hona chahiye
   } else {
-    res.status(401).json({ message: "Not logged in" });
+    res.status(401).json({ message: 'Not logged in' });
   }
 });
+
+
 
 app.get("/room-history", async (req, res) => {
   try {
@@ -183,8 +185,7 @@ app.get("/room-history", async (req, res) => {
     }
 
     const email = req.user.emails?.[0]?.value;
-    const rooms = await db
-      .collection("room_history")
+    const rooms = await db.collection("room_history")
       .find({ userEmail: email })
       .sort({ timestamp: -1 })
       .toArray();
@@ -196,19 +197,20 @@ app.get("/room-history", async (req, res) => {
   }
 });
 
-app.get("/user-rooms", async (req, res) => {
+
+
+app.get('/user-rooms', async (req, res) => {
   if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Not logged in" });
+    return res.status(401).json({ error: 'Not logged in' });
   }
 
   const email = req.user.emails[0].value;
 
   try {
     const db = mongoose.connection.db; // ✅ FIXED
-    const rooms = await db.collection("room_history");
-    const history = await db
-      .collection("room_history")
-      .find({ userEmail: email })
+    const rooms = await db.collection('room_history')
+    const history = await db.collection('room_history')  
+    .find({ userEmail: email })
       .sort({ timestamp: -1 })
       .toArray();
     res.json(history);
@@ -218,6 +220,7 @@ app.get("/user-rooms", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch room history" });
   }
 });
+
 
 app.get("/room/:id", async (req, res) => {
   const roomId = req.params.id;
@@ -243,19 +246,19 @@ app.post("/run-code", async (req, res) => {
   const { source_code, stdin, language_id, roomId } = req.body;
 
   const options = {
-    method: "POST",
-    url: "https://judge0.p.rapidapi.com/submissions",
-    params: { base64_encoded: "false", fields: "*" },
+    method: 'POST',
+    url: 'https://judge0.p.rapidapi.com/submissions',
+    params: { base64_encoded: 'false', fields: '*' },
     headers: {
-      "content-type": "application/json",
-      "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-      "X-RapidAPI-Host": process.env.RAPIDAPI_HOST,
+      'content-type': 'application/json',
+      'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+      'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
     },
     data: {
       source_code,
       stdin,
-      language_id,
-    },
+      language_id
+    }
   };
 
   try {
@@ -271,19 +274,15 @@ app.post("/run-code", async (req, res) => {
         const result = await axios.get(
           `https://judge0.p.rapidapi.com/submissions/${token}`,
           {
-            params: { base64_encoded: "false", fields: "*" },
+            params: { base64_encoded: 'false', fields: '*' },
             headers: {
-              "X-RapidAPI-Key": process.env.RAPIDAPI_KEY,
-              "X-RapidAPI-Host": process.env.RAPIDAPI_HOST,
-            },
+              'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+              'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+            }
           }
         );
 
-        const output =
-          result.data.stdout ||
-          result.data.stderr ||
-          result.data.compile_output ||
-          "No output";
+        const output = result.data.stdout || result.data.stderr || result.data.compile_output || "No output";
 
         // ✅ Emit to everyone in the room
         if (roomId && io) {
@@ -299,111 +298,93 @@ app.post("/run-code", async (req, res) => {
   }
 });
 
-io.on("connection", (socket) => {
-  console.log("✅ New socket connected:", socket.id);
-  socket.on("ready-for-call", ({ roomId }) => {
-  socket.to(roomId).emit("ready-for-call");
+
+io.on('connection', (socket) => {
+  console.log('✅ New socket connected:', socket.id);
+
+
+socket.on('join-room', async ({ roomId, username, email }) => {
+  socket.join(roomId);
+  socket.data.username = username;
+
+  let room = await Room.findOne({ roomId });
+  if (!room) {
+    room = await Room.create({
+      roomId,
+      createdBy: email,
+      participants: [email],
+      codeContent: "",
+    });
+  } else if (!room.participants.includes(email)) {
+    room.participants.push(email);
+    await room.save();
+  }
+
+  try {
+    // Check if room already has an entry in room_history
+    const existing = await db.collection("room_history").findOne({ roomId });
+
+    let creatorNameToStore = username || "Anonymous";
+    let createdBy = email;
+
+    if (existing) {
+      // Use original creator info
+      creatorNameToStore = existing.creatorName;
+      createdBy = existing.createdBy;
+    }
+
+ const alreadyJoined = await db.collection("room_history").findOne({
+  roomId,
+  userEmail: email
+});
+
+if (!alreadyJoined) {
+  // Fetch room creation date from Room model
+  const roomData = await Room.findOne({ roomId });
+
+  await db.collection("room_history").insertOne({
+    roomId,
+    createdBy,
+    creatorName: creatorNameToStore,
+    userEmail: email,
+    timestamp: new Date(), // when the user joined
+    roomCreatedAt: roomData?.createdAt || new Date() // ✅ Add this
+  });
+
+  console.log(`📝 Saved to room_history for ${email}`);
+} else {
+  console.log(`🔁 Skipped duplicate entry for ${email} in ${roomId}`);
+}
+
+    console.log(`📝 Saved to room_history for ${email}`);
+  } catch (err) {
+    console.error("❌ Failed to insert into room_history:", err);
+  }
+
+  const sockets = await io.in(roomId).fetchSockets();
+  const users = sockets.map(s => s.data.username);
+  io.to(roomId).emit('room-users', users);
+
+  console.log(`🧠 ${username} joined ${roomId}`);
 });
 
 
-  socket.on("join-room", async ({ roomId, username, email }) => {
-    socket.join(roomId);
-    socket.data.username = username;
-
-    let room = await Room.findOne({ roomId });
-    if (!room) {
-      room = await Room.create({
-        roomId,
-        createdBy: email,
-        participants: [email],
-        codeContent: "",
-      });
-    } else if (!room.participants.includes(email)) {
-      room.participants.push(email);
-      await room.save();
-    }
-
-    try {
-      // Check if room already has an entry in room_history
-      const existing = await db.collection("room_history").findOne({ roomId });
-
-      let creatorNameToStore = username || "Anonymous";
-      let createdBy = email;
-
-      if (existing) {
-        // Use original creator info
-        creatorNameToStore = existing.creatorName;
-        createdBy = existing.createdBy;
-      }
-
-      const alreadyJoined = await db.collection("room_history").findOne({
-        roomId,
-        userEmail: email,
-      });
-
-      if (!alreadyJoined) {
-        // Fetch room creation date from Room model
-        const roomData = await Room.findOne({ roomId });
-
-        await db.collection("room_history").insertOne({
-          roomId,
-          createdBy,
-          creatorName: creatorNameToStore,
-          userEmail: email,
-          timestamp: new Date(), // when the user joined
-          roomCreatedAt: roomData?.createdAt || new Date(), // ✅ Add this
-        });
-
-        console.log(`📝 Saved to room_history for ${email}`);
-      } else {
-        console.log(`🔁 Skipped duplicate entry for ${email} in ${roomId}`);
-      }
-
-      console.log(`📝 Saved to room_history for ${email}`);
-    } catch (err) {
-      console.error("❌ Failed to insert into room_history:", err);
-    }
-
-    const sockets = await io.in(roomId).fetchSockets();
-    const users = sockets.map((s) => s.data.username);
-    io.to(roomId).emit("room-users", users);
-
-    console.log(`🧠 ${username} joined ${roomId}`);
-  });
-//  // Video Chat Signaling
-//   socket.on("video-offer", ({ roomId, offer }) => {
-//     // Emit video offer to all other peers in the room
-//     socket.to(roomId).emit("video-offer", { offer });
-//   });
-
-//   socket.on("video-answer", ({ roomId, answer }) => {
-//     // Emit video answer to all other peers in the room
-//     socket.to(roomId).emit("video-answer", { answer });
-//   });
-
-//   // 🔄 Mutual ICE exchange handler
-// socket.on("ice-candidate", ({ roomId, candidate }) => {
-//   if (candidate) {
-//     socket.to(roomId).emit("ice-candidate", { candidate });
-//   }
-// });
-
   // ✅ Moved everything inside here 👇
-  socket.on("send-code", async ({ roomId, code }) => {
+  socket.on('send-code', async ({ roomId, code }) => {
     await Room.findOneAndUpdate({ roomId }, { codeContent: code });
-    socket.to(roomId).emit("code-update", code);
+    socket.to(roomId).emit('code-update', code);
   });
 
-  socket.on("user-typing", ({ roomId, username }) => {
-    socket.to(roomId).emit("user-typing", username);
+  socket.on('user-typing', ({ roomId, username }) => {
+    socket.to(roomId).emit('user-typing', username);
   });
 
-  socket.on("send-message", async ({ roomId, sender, message }) => {
+  socket.on('send-message', async ({ roomId, sender, message }) => {
     await Room.findOneAndUpdate(
       { roomId },
       { $push: { chatHistory: { sender, message } } }
     );
-    socket.to(roomId).emit("receive-message", { sender, message });
+    socket.to(roomId).emit('receive-message', { sender, message });
   });
 
   // ✅ Voice features
@@ -419,16 +400,18 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("ice-candidate", { candidate });
   });
 
-  socket.on("disconnect", async () => {
-    const rooms = Array.from(socket.rooms).filter((r) => r !== socket.id);
-    for (const roomId of rooms) {
-      const sockets = await io.in(roomId).fetchSockets();
-      const users = sockets.map((s) => s.data.username);
-      io.to(roomId).emit("room-users", users);
-    }
-    console.log(`❌ Socket disconnected: ${socket.id}`);
-  });
+  socket.on('disconnect', async () => {
+  const rooms = Array.from(socket.rooms).filter(r => r !== socket.id);
+  for (const roomId of rooms) {
+    const sockets = await io.in(roomId).fetchSockets();
+    const users = sockets.map(s => s.data.username);
+    io.to(roomId).emit('room-users', users);
+  }
+  console.log(`❌ Socket disconnected: ${socket.id}`);
 });
+
+});
+
 
 // const io = new Server(server, {
 //   cors: {
@@ -482,6 +465,7 @@ io.on("connection", (socket) => {
 //   socket.to(roomId).emit('receive-message', { sender, message });
 // });
 
+
 //   // Disconnect
 //   socket.on('disconnect', () => {
 //     console.log(`❌ Socket disconnected: ${socket.id}`);
@@ -490,5 +474,5 @@ io.on("connection", (socket) => {
 
 // Start server
 server.listen(4000, () => {
-  console.log("🚀 Server running on http://localhost:4000");
+  console.log('🚀 Server running on http://localhost:4000');
 });
