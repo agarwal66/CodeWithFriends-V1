@@ -136,31 +136,31 @@ app.use(
 );
 app.use(express.json());
 // --when localhosty uncomment this below session
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "fallbacksecret",
-    resave: false,
-    saveUninitialized: true,
-    cookie: {
-      secure: false,
-      // secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      // sameSite: "none",
-      sameSite: "lax", // ✅ Use lax for local dev
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-    },
+// app.use(
+//   session({
+//     secret: process.env.SESSION_SECRET || "fallbacksecret",
+//     resave: false,
+//     saveUninitialized: true,
+//     cookie: {
+//       secure: false,
+//       // secure: process.env.NODE_ENV === "production",
+//       httpOnly: true,
+//       // sameSite: "none",
+//       sameSite: "lax", // ✅ Use lax for local dev
+//       maxAge: 24 * 60 * 60 * 1000, // 1 day
+//     },
 // --for production
-// app.use(session({
-//   secret: process.env.SESSION_SECRET||"fallbacksecret",
-//   resave: false,
-//   saveUninitialized: true,
-//   cookie: {
-//     // secure: true,
-//    secure:process.env.NODE_ENV==="production",
-//     httpOnly: true,
-//     sameSite: 'none',
-//     maxAge: 24 * 60 * 60 * 1000 // 1 day
-//   }
+app.use(session({
+  secret: process.env.SESSION_SECRET||"fallbacksecret",
+  resave: false,
+  saveUninitialized: true,
+  cookie: {
+    // secure: true,
+   secure:process.env.NODE_ENV==="production",
+    httpOnly: true,
+    sameSite: 'none',
+    maxAge: 24 * 60 * 60 * 1000 // 1 day
+  }
   })
 );
 app.use(passport.initialize());
