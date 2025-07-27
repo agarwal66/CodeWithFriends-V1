@@ -136,31 +136,31 @@ app.use(
 );
 app.use(express.json());
 // --when localhosty uncomment this below session
-// app.use(
-//   session({
-//     secret: process.env.SESSION_SECRET || "fallbacksecret",
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: {
-//       secure: false,
-//       // secure: process.env.NODE_ENV === "production",
-//       httpOnly: true,
-//       // sameSite: "none",
-//       sameSite: "lax", // ✅ Use lax for local dev
-//       maxAge: 24 * 60 * 60 * 1000, // 1 day
-//     },
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "fallbacksecret",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: false,
+      // secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      // sameSite: "none",
+      sameSite: "lax", // ✅ Use lax for local dev
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    },
 // --for production
-app.use(session({
-  secret: process.env.SESSION_SECRET||"fallbacksecret",
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    // secure: true,
-   secure:process.env.NODE_ENV==="production",
-    httpOnly: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
-  }
+// app.use(session({
+//   secret: process.env.SESSION_SECRET||"fallbacksecret",
+//   resave: false,
+//   saveUninitialized: true,
+//   cookie: {
+//     // secure: true,
+//    secure:process.env.NODE_ENV==="production",
+//     httpOnly: true,
+//     sameSite: 'none',
+//     maxAge: 24 * 60 * 60 * 1000 // 1 day
+//   }
   })
 );
 app.use(passport.initialize());
@@ -170,7 +170,19 @@ app.use('/auth', authRoutes);
 // Profile Route
 app.get('/profile', (req, res) => {
   if (req.isAuthenticated()) {
-    res.json(req.user);  // ✅ yeh hona chahiye
+    let user = {
+      displayName: req.user.displayName || req.user.name,
+      email: req.user.emails?.[0]?.value || req.user.email,
+      photos: req.user.photos || []
+    };
+    // console.log("User profile:", user);
+    // ✅ Return user profile
+    // res.json(user);
+    // ✅ Return user profile with emails
+    res.json({ displayName: user.displayName,
+      email: user.email,
+      photos: user.photos,
+      emails: req.user.emails || [] }); // ✅ Include emails
   } else {
     res.status(401).json({ message: 'Not logged in' });
   }
@@ -411,7 +423,18 @@ if (!alreadyJoined) {
 });
 
 });
-
+app.get('/profile', (req, res) => {
+  if (req.isAuthenticated()) {
+    let user = {
+      displayName: req.user.displayName || req.user.name,
+      email: req.user.emails?.[0]?.value || req.user.email,
+      photos: req.user.photos || []
+    };
+    res.json(user);
+  } else {
+    res.status(401).json({ message: 'Not logged in' });
+  }
+});
 
 // const io = new Server(server, {
 //   cors: {
