@@ -128,7 +128,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000", // ✅ local development
-      "https://codewithfriendsv1client.vercel.app", // ✅ deployed frontend
+      "https://codewithfriends.vercel.app", // ✅ deployed frontend
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
