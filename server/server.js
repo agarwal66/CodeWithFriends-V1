@@ -115,7 +115,7 @@ mongoose
 const io = new Server(server, {
   cors: {
     origin: [
-      "https://codewithfriendsv1client.vercel.app",
+      "https://codewithfriends.vercel.app",
       "http://localhost:3000",
     ],
     credentials: true,
