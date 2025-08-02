@@ -178,8 +178,6 @@ app.post('/api/contact', async (req, res) => {
       pass: 'mjat hjwn mnen libb' // use App Password, not your real password!
     }
   });
-
-  // Email options
   let mailOptions = {
     from: `"${name}" <${email}>`,
     to: 'codewithfriends19@gmail.com',
