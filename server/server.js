@@ -79,7 +79,7 @@
 //     res.status(500).json({ error: "Server error" });
 //   }
 // });
-
+const nodemailer = require('nodemailer');
 const express = require("express");
 const session = require("express-session");
 const passport = require("passport");
@@ -115,7 +115,7 @@ mongoose
 const io = new Server(server, {
   cors: {
     origin: [
-      "https://codewithfriendsv1client.vercel.app",
+      "https://codewithfriends.vercel.app",
       "http://localhost:3000",
     ],
     credentials: true,
@@ -128,7 +128,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000", // ✅ local development
-      "https://codewithfriendsv1client.vercel.app", // ✅ deployed frontend
+      "https://codewithfriends.vercel.app", // ✅ deployed frontend
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
@@ -149,6 +149,7 @@ app.use(express.json());
 //       sameSite: "lax", // ✅ Use lax for local dev
 //       maxAge: 24 * 60 * 60 * 1000, // 1 day
 //     },
+    // mjat hjwn mnen libb
 // --for production
 app.use(session({
   secret: process.env.SESSION_SECRET||"fallbacksecret",
@@ -166,7 +167,35 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use('/auth', authRoutes);
+app.post('/api/contact', async (req, res) => {
+  const { name, email, message } = req.body;
 
+  // Create transporter (use your real credentials for production)
+  let transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: 'codewithfriends19@gmail.com', // your gmail
+      pass: 'mjat hjwn mnen libb' // use App Password, not your real password!
+    }
+  });
+
+  // Email options
+  let mailOptions = {
+    from: `"${name}" <${email}>`,
+    to: 'codewithfriends19@gmail.com',
+    subject: 'New Contact Form Submission - CodeWithFriends',
+    text: `Name: ${name}\nEmail: ${email}\nMessage:\n${message}`,
+    html: `<b>Name:</b> ${name}<br/><b>Email:</b> ${email}<br/><b>Message:</b><br/>${message.replace(/\n/g, '<br/>')}`
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: "Message sent!" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Failed to send message." });
+  }
+});
 // Profile Route
 app.get('/profile', (req, res) => {
   if (req.isAuthenticated()) {
@@ -382,11 +411,14 @@ if (!alreadyJoined) {
 
 
   // ✅ Moved everything inside here 👇
-  socket.on('send-code', async ({ roomId, code }) => {
-    await Room.findOneAndUpdate({ roomId }, { codeContent: code });
-    socket.to(roomId).emit('code-update', code);
-  });
-
+  // socket.on('send-code', async ({ roomId, code }) => {
+  //   await Room.findOneAndUpdate({ roomId }, { codeContent: code });
+  //   socket.to(roomId).emit('code-update', code);
+  // });
+socket.on('send-code', async ({ roomId, code, sender }) => {
+  await Room.findOneAndUpdate({ roomId }, { codeContent: code });
+  socket.to(roomId).emit('code-update', { code, sender });
+});
   socket.on('user-typing', ({ roomId, username }) => {
     socket.to(roomId).emit('user-typing', username);
   });
