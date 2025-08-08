@@ -136,32 +136,32 @@ app.use(
 );
 app.use(express.json());
 // --when localhosty uncomment this below session
-// app.use(
-//   session({
-//     secret: process.env.SESSION_SECRET || "fallbacksecret",
-//     resave: false,
-//     saveUninitialized: true,
-//     cookie: {
-//       secure: false,
-//       // secure: process.env.NODE_ENV === "production",
-//       httpOnly: true,
-//       // sameSite: "none",
-//       sameSite: "lax", // ✅ Use lax for local dev
-//       maxAge: 24 * 60 * 60 * 1000, // 1 day
-//     },
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "fallbacksecret",
+    resave: false,
+    saveUninitialized: true,
+    cookie: {
+      secure: false,
+      // secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      // sameSite: "none",
+      sameSite: "lax", // ✅ Use lax for local dev
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+    },
     // mjat hjwn mnen libb
 // --for production
-app.use(session({
-  secret: process.env.SESSION_SECRET||"fallbacksecret",
-  resave: false,
-  saveUninitialized: true,
-  cookie: {
-    // secure: true,
-   secure:process.env.NODE_ENV==="production",
-    httpOnly: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
-  }
+// app.use(session({
+//   secret: process.env.SESSION_SECRET||"fallbacksecret",
+//   resave: false,
+//   saveUninitialized: true,
+//   cookie: {
+//     // secure: true,
+//    secure:process.env.NODE_ENV==="production",
+//     httpOnly: true,
+//     sameSite: 'none',
+//     maxAge: 24 * 60 * 60 * 1000 // 1 day
+//   }
   })
 );
 app.use(passport.initialize());
@@ -403,7 +403,7 @@ if (!alreadyJoined) {
   const sockets = await io.in(roomId).fetchSockets();
   const users = sockets.map(s => s.data.username);
   io.to(roomId).emit('room-users', users);
-
+  socket.emit('init-code', room.codeContent || "");
   console.log(`🧠 ${username} joined ${roomId}`);
 });
 
@@ -416,6 +416,11 @@ if (!alreadyJoined) {
 socket.on('send-code', async ({ roomId, code, sender }) => {
   await Room.findOneAndUpdate({ roomId }, { codeContent: code });
   socket.to(roomId).emit('code-update', { code, sender });
+});
+socket.on('code-update', async ({ roomId, code }) => {
+  console.log("Server received code-update:", code);
+  await Room.findOneAndUpdate({ roomId }, { codeContent: code });
+  socket.to(roomId).emit('code-update', { code, sender: socket.id });
 });
   socket.on('user-typing', ({ roomId, username }) => {
     socket.to(roomId).emit('user-typing', username);
