@@ -167,31 +167,53 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 app.use('/auth', authRoutes);
+const emailConfig = {
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER || 'codewithfriends19@gmail.com',
+    pass: process.env.EMAIL_PASSWORD || 'your-app-password'
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+};
 app.post('/api/contact', async (req, res) => {
   const { name, email, message } = req.body;
 
-  // Create transporter (use your real credentials for production)
-  let transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: 'codewithfriends19@gmail.com', // your gmail
-      pass: 'mjat hjwn mnen libb' // use App Password, not your real password!
-    }
-  });
-  let mailOptions = {
-    from: `"${name}" <${email}>`,
-    to: 'codewithfriends19@gmail.com',
+  // Basic validation
+  if (!name || !email || !message) {
+    return res.status(400).json({ success: false, message: "Please fill in all fields" });
+  }
+
+  const mailOptions = {
+    from: `"${name}" <${process.env.EMAIL_USER || 'codewithfriends19@gmail.com'}>`,
+    to: process.env.EMAIL_USER || 'codewithfriends19@gmail.com',
+    replyTo: email,
     subject: 'New Contact Form Submission - CodeWithFriends',
     text: `Name: ${name}\nEmail: ${email}\nMessage:\n${message}`,
-    html: `<b>Name:</b> ${name}<br/><b>Email:</b> ${email}<br/><b>Message:</b><br/>${message.replace(/\n/g, '<br/>')}`
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>New Contact Form Submission</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Message:</strong></p>
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px;">
+          ${message.replace(/\n/g, '<br>')}
+        </div>
+      </div>
+    `
   };
 
   try {
+    const transporter = nodemailer.createTransport(emailConfig);
     await transporter.sendMail(mailOptions);
-    res.json({ success: true, message: "Message sent!" });
+    res.json({ success: true, message: "Message sent successfully!" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Failed to send message." });
+    console.error('Error sending email:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to send message. Please try again later."
+    });
   }
 });
 // Profile Route
