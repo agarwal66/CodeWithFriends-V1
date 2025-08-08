@@ -303,63 +303,87 @@ app.get("/room/:id", async (req, res) => {
 console.log("KEY:", process.env.RAPIDAPI_KEY);
 console.log("HOST:", process.env.RAPIDAPI_HOST);
 
+// In server.js, update the run-code endpoint
+// In server.js, update the run-code endpoint
 app.post("/run-code", async (req, res) => {
   const { source_code, stdin, language_id, roomId } = req.body;
 
-  const options = {
-    method: 'POST',
-    url: 'https://judge0.p.rapidapi.com/submissions',
-    params: { base64_encoded: 'false', fields: '*' },
-    headers: {
-      'content-type': 'application/json',
-      'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-      'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
-    },
-    data: {
-      source_code,
-      stdin,
-      language_id
-    }
-  };
+  // Add validation
+  if (!source_code || !language_id) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
 
   try {
-    const submission = await axios.request(options);
-    const token = submission.data.token;
+    // Convert source code to base64
+    const base64Source = Buffer.from(source_code).toString('base64');
+    const base64Stdin = stdin ? Buffer.from(stdin).toString('base64') : '';
 
-    // ✅ Immediately respond so headers are not sent twice
-    res.json({ message: "Code execution started" });
-
-    // ⏳ Wait and then fetch result
-    setTimeout(async () => {
-      try {
-        const result = await axios.get(
-          `https://judge0.p.rapidapi.com/submissions/${token}`,
-          {
-            params: { base64_encoded: 'false', fields: '*' },
-            headers: {
-              'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
-              'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
-            }
-          }
-        );
-
-        const output = result.data.stdout || result.data.stderr || result.data.compile_output || "No output";
-
-        // ✅ Emit to everyone in the room
-        if (roomId && io) {
-          io.to(roomId).emit("code-output", output);
-        }
-      } catch (fetchErr) {
-        console.error("Error fetching Judge0 result:", fetchErr.message);
+    const options = {
+      method: 'POST',
+      url: 'https://judge0.p.rapidapi.com/submissions',
+      params: { 
+        base64_encoded: 'true',  // Enable base64 encoding
+        fields: '*',
+        wait: 'true'
+      },
+      headers: {
+        'content-type': 'application/json',
+        'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+        'X-RapidAPI-Host': process.env.RAPIDAPI_HOST
+      },
+      data: {
+        source_code: base64Source,
+        stdin: base64Stdin,
+        language_id: parseInt(language_id)
       }
-    }, 3000);
+    };
+
+    const submission = await axios.request(options);
+    const result = submission.data;
+
+    // Helper function to decode base64 if needed
+    const decodeIfBase64 = (str) => {
+      if (!str) return '';
+      try {
+        // If it's base64, decode it
+        return Buffer.from(str, 'base64').toString('utf-8');
+      } catch (e) {
+        // If not base64, return as is
+        return str;
+      }
+    };
+
+    // Get the most relevant output
+    const output = 
+      decodeIfBase64(result.stderr) || 
+      decodeIfBase64(result.compile_output) || 
+      decodeIfBase64(result.stdout) || 
+      "No output";
+
+    if (roomId && io) {
+      // Send the first 1000 characters to avoid very large outputs
+      io.to(roomId).emit("code-output", output.substring(0, 1000));
+    }
+    res.json({ message: "Code executed" });
+
   } catch (error) {
-    console.error("Judge0 Submission Error:", error.message);
-    res.status(500).json({ error: "Code submission failed" });
+    console.error("Judge0 Error:", error.response?.data || error.message);
+    let errorMessage = error.response?.data?.error || error.message;
+    
+    // Format the error message to be more readable
+    if (error.response?.data?.message) {
+      errorMessage = `Line ${error.response.data.line || 'unknown'}: ${error.response.data.message}`;
+    }
+    
+    if (roomId && io) {
+      io.to(roomId).emit("code-output", `Error: ${errorMessage}`);
+    }
+    res.status(500).json({ 
+      error: "Code execution failed", 
+      details: errorMessage 
+    });
   }
 });
-
-
 io.on('connection', (socket) => {
   console.log('✅ New socket connected:', socket.id);
 
