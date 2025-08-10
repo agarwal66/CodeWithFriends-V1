@@ -98,12 +98,20 @@ const app = express();
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const helmet = require('helmet');
-app.use(helmet());
 const compression = require('compression');
-app.use(compression());
 const morgan = require('morgan');
 const fs = require('fs');
 const path = require('path');
+
+// Define allowed origins
+const allowedOrigins = [
+  "https://codewithfriends.vercel.app",
+  "https://www.codewithfriends.vercel.app",
+  "http://localhost:3000" // Keep for development
+];
+
+app.use(helmet());
+app.use(compression());
 
 // Create a write stream (in append mode)
 const accessLogStream = fs.createWriteStream(
@@ -174,12 +182,6 @@ io.engine.on("connection_error", (err) => {
 //     credentials: true,
 //   })
 // );
-const allowedOrigins = [
-  "https://codewithfriends.vercel.app",
-  "https://www.codewithfriends.vercel.app",
-  "http://localhost:3000" // Keep for development
-];
-
 app.use(
   cors({
     origin: function(origin, callback) {
