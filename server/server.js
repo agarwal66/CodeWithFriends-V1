@@ -97,6 +97,31 @@ const axios = require("axios");
 const app = express();
 const server = http.createServer(app);
 const { Server } = require("socket.io");
+const helmet = require('helmet');
+app.use(helmet());
+const compression = require('compression');
+app.use(compression());
+const morgan = require('morgan');
+const fs = require('fs');
+const path = require('path');
+
+// Create a write stream (in append mode)
+const accessLogStream = fs.createWriteStream(
+  path.join(__dirname, 'access.log'),
+  { flags: 'a' }
+);
+
+// Setup the logger
+app.use(morgan('combined', { stream: accessLogStream }));
+app.use(morgan('dev')); // Log to console in development
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'UP',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    database: mongoose.connection.readyState === 1 ? 'CONNECTED' : 'DISCONNECTED'
+  });
+});
 // require("./authRoutes")(app, passport);
 // MongoDB Connection
 let db; // global
@@ -112,28 +137,151 @@ mongoose
   })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
+// const io = new Server(server, {
+//   cors: {
+//     origin: [
+//       "https://codewithfriends.vercel.app",
+//       "http://localhost:3000",
+//     ],
+//     credentials: true,
+//   },
+//   transports: ["websocket", "polling"],
+// });
 const io = new Server(server, {
   cors: {
-    origin: [
-      "https://codewithfriends.vercel.app",
-      "http://localhost:3000",
-    ],
+    origin: allowedOrigins,
     credentials: true,
   },
   transports: ["websocket", "polling"],
+  pingTimeout: 60000, // Increase timeout for production
+  pingInterval: 25000,
+  cookie: process.env.NODE_ENV === "production"
+});
+
+// Handle Socket.IO connection errors
+io.engine.on("connection_error", (err) => {
+  console.log("Socket.IO connection error:", err);
 });
 
 // Middleware
+// app.use(
+//   cors({
+//     origin: [
+//       "http://localhost:3000", // ✅ local development
+//       "https://codewithfriends.vercel.app", // ✅ deployed frontend
+//     ],
+//     methods: ["GET", "POST", "PUT", "DELETE"],
+//     credentials: true,
+//   })
+// );
+const allowedOrigins = [
+  "https://codewithfriends.vercel.app",
+  "https://www.codewithfriends.vercel.app",
+  "http://localhost:3000" // Keep for development
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000", // ✅ local development
-      "https://codewithfriends.vercel.app", // ✅ deployed frontend
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: function(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+    exposedHeaders: ["Content-Range", "X-Content-Range"]
   })
 );
+// Security headers
+app.use((req, res, next) => {
+  // Remove X-Powered-By header
+  res.removeHeader('X-Powered-By');
+  
+  // Set security headers
+  res.header('X-Content-Type-Options', 'nosniff');
+  res.header('X-Frame-Options', 'DENY');
+  res.header('X-XSS-Protection', '1; mode=block');
+  
+  // CORS headers
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  next();
+});
+const rateLimit = require('express-rate-limit');
+
+// General rate limiter
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+app.use(limiter);
+
+// Stricter limiter for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: 'Too many requests, please try again later'
+});
+app.use(['/auth/login', '/auth/register'], authLimiter);
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  
+  if (err.message.includes('CORS')) {
+    return res.status(403).json({ 
+      error: 'Not allowed by CORS',
+      message: err.message 
+    });
+  }
+  
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : err.message
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found' });
+});
+// Validate required environment variables
+const requiredEnvVars = ['MONGO_URI', 'SESSION_SECRET', 'EMAIL_USER', 'EMAIL_PASSWORD'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required environment variables:', missingVars.join(', '));
+  process.exit(1);
+}
+mongoose.connection.on('connected', () => {
+  console.log('Mongoose connected to DB');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('Mongoose connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('Mongoose disconnected');
+});
+
+// Handle process termination
+process.on('SIGINT', () => {
+  mongoose.connection.close(() => {
+    console.log('Mongoose connection closed through app termination');
+    process.exit(0);
+  });
+});
 app.use(express.json());
 // --when localhosty uncomment this below session
 // app.use(
@@ -151,18 +299,35 @@ app.use(express.json());
 //     },
     // mjat hjwn mnen libb
 // --for production
+// app.use(session({
+//   secret: process.env.SESSION_SECRET||"fallbacksecret",
+//   resave: false,
+//   saveUninitialized: true,
+//   cookie: {
+//     // secure: true,
+//    secure:process.env.NODE_ENV==="production",
+//     httpOnly: true,
+//     sameSite: 'none',
+//     maxAge: 24 * 60 * 60 * 1000 // 1 day
+//   }
 app.use(session({
-  secret: process.env.SESSION_SECRET||"fallbacksecret",
+  secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
+  name: 'cow.sid', // Custom session cookie name
+  proxy: true, // Trust the reverse proxy
   cookie: {
-    // secure: true,
-   secure:process.env.NODE_ENV==="production",
+    secure: process.env.NODE_ENV === "production", // true in production
     httpOnly: true,
-    sameSite: 'none',
-    maxAge: 24 * 60 * 60 * 1000 // 1 day
-  }
+    sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    domain: process.env.NODE_ENV === "production" ? '.yourdomain.com' : undefined
+  },
+  store: new (require('connect-mongodb-session')(session))({
+    uri: process.env.MONGO_URI,
+    collection: 'sessions'
   })
+})
 );
 app.use(passport.initialize());
 app.use(passport.session());
